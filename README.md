@@ -199,3 +199,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 ## Acknowledgements
 
 Built from a real-world macOS security audit. Inspired by the excellent work of [Objective-See](https://objective-see.org) and the macOS security research community.
+
