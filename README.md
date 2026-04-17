@@ -25,7 +25,7 @@ A comprehensive, interactive security audit script for macOS — built from a re
 | 3 | Persistence Mechanisms | LaunchAgents, LaunchDaemons, StartupItems, Cron, PrivilegedHelperTools |
 | 4 | User Account Audit | Sudoers, SSH authorized keys, drop-in configs |
 | 5 | Network Security | Hosts file, DNS servers, proxy settings, listening ports |
-| 6 | Installed Software | Kernel extensions, Gatekeeper app assessment, Homebrew audit |
+| 6 | Installed Software | Kernel extensions, Gatekeeper app assessment, Homebrew outdated packages |
 | 7 | Filesystem Integrity | World-writable files, SUID binaries, /tmp, hidden files |
 
 ---
@@ -131,6 +131,21 @@ Each report includes:
 
 ---
 
+## Expected Runtime
+
+The full audit takes **2-5 minutes** depending on how many apps and files are on your machine. Most phases complete in seconds — the slowest checks are in Phases 6 and 7:
+
+| Phase | Check | Expected Time | Why |
+|-------|-------|---------------|-----|
+| 6 | Gatekeeper app assessment | 10–30 seconds | Verifies code signature of every app in `/Applications` — more apps = longer |
+| 6 | Homebrew outdated packages | 5–15 seconds | Checks package versions against Homebrew registry |
+| 7 | World-writable files scan | 5–15 seconds | Walks entire `/usr/local` directory tree |
+| 7 | SUID binary scan | 15–45 seconds | Walks the **entire filesystem** — the longest check by far |
+
+The script will display a `[WAIT]` message before each slow check so you know it's still running and hasn't frozen. If the SUID scan seems to take longer than 60 seconds, your machine likely has a very large number of files — this is normal.
+
+---
+
 ## Customization
 
 Before running, open `mac_security_audit.sh` and add your own software to the `KNOWN_AGENTS` allowlist in Phase 3. Any LaunchAgent or LaunchDaemon not matching the list will be flagged as unknown.
@@ -199,4 +214,3 @@ MIT License — see [LICENSE](LICENSE) for details.
 ## Acknowledgements
 
 Built from a real-world macOS security audit. Inspired by the excellent work of [Objective-See](https://objective-see.org) and the macOS security research community.
-

@@ -7,7 +7,7 @@
 #              Outputs colored terminal results + a markdown report.
 # =============================================================================
 
-VERSION="1.0.2"
+VERSION="1.0.4"
 REPORT_DIR="$HOME/security-audit-reports"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 REPORT_FILE="$REPORT_DIR/security_audit_$TIMESTAMP.md"
@@ -62,6 +62,10 @@ print_fail() {
 print_info() {
     echo -e "  ${BOLD}[INFO]${RESET}  $1"
     echo "  - ℹ️ INFO: $1" >> "$REPORT_FILE"
+}
+
+print_wait() {
+    echo -e "  ${CYAN}[WAIT]${RESET}  $1"
 }
 
 ask_fix() {
@@ -490,6 +494,7 @@ phase6_software() {
 
     # Gatekeeper app assessment
     print_check "Gatekeeper assessment of installed apps"
+    print_wait "Verifying code signatures for all apps in /Applications — may take 10-30 seconds..."
     REJECTED=$(spctl --assess --verbose /Applications/*.app 2>&1 | grep -E "rejected|UNKNOWN")
     if [[ -z "$REJECTED" ]]; then
         print_pass "All apps in /Applications passed Gatekeeper"
@@ -502,13 +507,18 @@ phase6_software() {
     print_check "Homebrew installation"
     if command -v brew &>/dev/null; then
         print_info "Homebrew is installed"
-        print_check "Homebrew security audit"
-        BREW_AUDIT=$(brew audit 2>/dev/null | head -20)
-        if [[ -z "$BREW_AUDIT" ]]; then
-            print_pass "Homebrew audit returned no issues"
+        print_check "Homebrew outdated packages (security relevant)"
+        print_wait "Checking Homebrew package versions — may take 5-15 seconds..."
+        # Use timeout to prevent hanging — brew audit is slow and checks code quality not security
+        # brew outdated is fast and flags packages needing security updates
+        BREW_OUTDATED=$(timeout 30 brew outdated 2>/dev/null)
+        if [[ -z "$BREW_OUTDATED" ]]; then
+            print_pass "All Homebrew packages are up to date"
         else
-            print_warn "Homebrew audit findings:"
-            print_info "$BREW_AUDIT"
+            print_warn "Outdated Homebrew packages found — update recommended:"
+            echo "$BREW_OUTDATED" | while IFS= read -r pkg; do
+                print_info "$pkg"
+            done
         fi
     else
         print_info "Homebrew not installed"
@@ -523,6 +533,7 @@ phase7_filesystem() {
 
     # World-writable files in /usr/local
     print_check "World-writable files in /usr/local"
+    print_wait "Scanning /usr/local for world-writable files — may take 5-15 seconds..."
     WW=$(find /usr/local -perm -o+w -type f 2>/dev/null)
     if [[ -z "$WW" ]]; then
         print_pass "No world-writable files in /usr/local"
@@ -535,6 +546,7 @@ phase7_filesystem() {
 
     # Unexpected SUID binaries
     print_check "SUID binaries (non-standard)"
+    print_wait "Scanning entire filesystem for SUID binaries — this is the longest check, may take 15-45 seconds..."
     KNOWN_SUID=(
         "/usr/bin/top" "/usr/bin/atq" "/usr/bin/crontab" "/usr/bin/atrm"
         "/usr/bin/newgrp" "/usr/bin/su" "/usr/bin/batch" "/usr/bin/at"
