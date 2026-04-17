@@ -12,6 +12,7 @@ A comprehensive, interactive security audit script for macOS — built from a re
 - 🔧 **Optional fixes** — prompted interactively, never applied silently
 - 🍎 **Apple Silicon native** — tested on macOS 15+ with Secure Boot / SIP verification
 - 🔑 **No third-party dependencies** — pure bash, uses only built-in macOS tools
+- 📋 **Customizable allowlist** — add your own software vendors before running
 
 ---
 
@@ -127,6 +128,25 @@ Each report includes:
 - Per-phase results with pass/warn/fail status
 - System metadata (hostname, macOS version, date)
 - Summary table with total issues and fixes applied
+
+---
+
+## Customization
+
+Before running, open `mac_security_audit.sh` and add your own software to the `KNOWN_AGENTS` allowlist in Phase 3. Any LaunchAgent or LaunchDaemon not matching the list will be flagged as unknown.
+
+```bash
+# ADD YOUR OWN SOFTWARE BELOW THIS LINE
+# Example:
+"com.mycompany"
+"com.mytool"
+```
+
+Common entries you might want to add depending on your setup:
+- Corporate VPN: `"com.cisco.anyconnect"`, `"com.paloaltonetworks"`
+- Password managers: `"com.1password"`, `"com.dashlane"`
+- Cloud storage: `"com.box"`, `"com.carbonite"`
+- MDM agents: `"com.jamf"`, `"com.kandji"`, `"com.mosyle"`
 
 ---
 

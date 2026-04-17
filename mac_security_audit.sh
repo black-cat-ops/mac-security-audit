@@ -1,13 +1,13 @@
 #!/bin/bash
 # =============================================================================
 # macOS Security Audit Script
-# Author: Jenna McCarthy
+# Author: Jen
 # Description: Comprehensive macOS security audit covering persistence,
 #              users, network, software, and filesystem integrity.
 #              Outputs colored terminal results + a markdown report.
 # =============================================================================
 
-VERSION="1.0.0"
+VERSION="1.0.2"
 REPORT_DIR="$HOME/security-audit-reports"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 REPORT_FILE="$REPORT_DIR/security_audit_$TIMESTAMP.md"
@@ -218,17 +218,49 @@ phase2_security_features() {
 phase3_persistence() {
     print_header "Phase 3 — Persistence Mechanisms"
 
+    # =============================================================================
+    # KNOWN AGENTS ALLOWLIST
+    # This list covers the most common macOS system and vendor LaunchAgents/Daemons.
+    # Add your own software prefixes below before running in your environment.
+    # Format: "com.vendorname" — prefix matched, so "com.apple" covers all Apple agents.
+    # =============================================================================
     KNOWN_AGENTS=(
-        "com.malwarebytes"
-        "us.zoom"
-        "com.docker"
-        "com.nordvpn"
+        # Apple system agents — always expected
         "com.apple"
-        "org.wireshark"
-        "com.google"
+        "org.apple"
+
+        # Common productivity & collaboration
         "com.microsoft"
         "com.adobe"
+        "com.google"
+        "us.zoom"
+        "com.dropbox"
+        "com.slack"
+
+        # Security software
+        "com.malwarebytes"
+        "com.crowdstrike"
+        "com.carbonblack"
+        "com.jamf"
+        "com.kandji"
+
+        # Developer tools
+        "com.docker"
+        "org.wireshark"
+        "com.vagrant"
+
+        # Browsers
         "com.brave"
+        "org.mozilla"
+        "com.google.chrome"
+
+        # VPN clients (remove any you don't use)
+        "com.nordvpn"
+        "com.expressvpn"
+        "com.privateinternetaccess"
+
+        # ADD YOUR OWN SOFTWARE BELOW THIS LINE
+        # Example: "com.mycompany"
     )
 
     is_known() {
@@ -415,18 +447,20 @@ phase5_network() {
     done <<< "$DNS"
 
     # Proxy settings
+    # Check for actual proxy keys (HTTPProxy, HTTPSProxy, SOCKSProxy etc.)
+    # The default empty dictionary with just ExceptionsList and FTPPassive is normal
     print_check "Proxy configuration"
-    PROXY=$(scutil --proxy | grep -v -E "(ExceptionsList|FTPPassive|^\{|\}|local|169\.254)")
+    PROXY=$(scutil --proxy | grep -E "(HTTPProxy|HTTPSProxy|SOCKSProxy|ProxyAutoConfig|HTTPEnable|HTTPSEnable|SOCKSEnable)" | grep -v "Enable = 0")
     if [[ -z "$PROXY" ]]; then
         print_pass "No proxy configured"
     else
-        print_warn "Proxy settings detected — verify these are intentional:"
+        print_warn "Active proxy settings detected — verify these are intentional:"
         print_info "$PROXY"
     fi
 
     # Listening ports
     print_check "Unexpected listening ports"
-    LISTENERS=$(lsof -i -n -P | grep LISTEN | grep -v -E "(launchd|rapportd|ControlCenter|symptomsd|Postman|Brave|Chrome|Firefox|Safari|Docker|zoom|Claude|Cursor|Code)")
+    LISTENERS=$(lsof -i -n -P | grep LISTEN | grep -v -E "(launchd|rapportd|ControlCe|ControlCenter|symptomsd|Postman|Brave|Chrome|Firefox|Safari|Docker|zoom|Claude|Cursor|Code)")
     if [[ -z "$LISTENERS" ]]; then
         print_pass "No unexpected listeners found"
     else
@@ -528,7 +562,7 @@ phase7_filesystem() {
 
     # Temp directory check
     print_check "Suspicious files in /tmp"
-    SUSPICIOUS_TMP=$(ls -la /tmp/ 2>/dev/null | grep -v -E "(^\.|Brave|Mozilla|vbox|powerlog|zeb_def|BBE72B|^\s*$|total|^d)" | grep -v "^total")
+    SUSPICIOUS_TMP=$(ls -la /tmp/ 2>/dev/null | grep -v -E "(^\.|Brave|Mozilla|vbox|powerlog|zeb_def|BBE72B|Sparkle|^\s*$|total|^d)" | grep -v "^total")
     if [[ -z "$SUSPICIOUS_TMP" ]]; then
         print_pass "/tmp looks clean"
     else
